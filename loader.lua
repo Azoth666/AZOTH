@@ -5,7 +5,7 @@ local CONFIG = {
 }
 
 local GAMES = {
-	[139717576471444] = "139717576471404",
+	[139717576471404] = "139717576471444",
 }
 
 local function log(message)
