@@ -2,23 +2,56 @@ local CONFIG = {
 	Name = "AZOTH",
 	BaseUrl = "https://raw.githubusercontent.com/Azoth666/AZOTH/main/game/",
 	Extension = ".lua",
+	BlockedExecutors = { "solara", "xeno" },
 }
 
 local GAMES = {
-	[139717576471404] = "139717576471444",
+	["139717576471444"] = { 10768845402 },
 }
 
 local function log(message)
 	warn(("[%s] %s"):format(CONFIG.Name, message))
 end
 
-local function resolveModuleName(placeId)
-	local moduleName = GAMES[placeId]
+local function buildUniverseIndex(games)
+	local index = {}
+	for moduleName, universeIds in pairs(games) do
+		for _, universeId in ipairs(universeIds) do
+			if index[universeId] ~= nil and index[universeId] ~= moduleName then
+				log(("UniverseId %d is registered for both %s and %s"):format(universeId, index[universeId], moduleName))
+			end
+			index[universeId] = moduleName
+		end
+	end
+	return index
+end
+
+local UNIVERSE_INDEX = buildUniverseIndex(GAMES)
+
+local function getBlockedExecutor()
+	if type(identifyexecutor) ~= "function" then
+		return nil
+	end
+	local ok, name = pcall(identifyexecutor)
+	if not ok or name == nil then
+		return nil
+	end
+	local lowered = tostring(name):lower()
+	for _, blocked in ipairs(CONFIG.BlockedExecutors) do
+		if lowered:find(blocked, 1, true) then
+			return tostring(name)
+		end
+	end
+	return nil
+end
+
+local function resolveModuleName(universeId)
+	local moduleName = UNIVERSE_INDEX[universeId]
 	if moduleName == nil then
-		return nil, ("PlaceId %s is not supported"):format(tostring(placeId))
+		return nil, ("UniverseId %s is not supported"):format(tostring(universeId))
 	end
 	if type(moduleName) ~= "string" or not moduleName:match("^[%w_%-]+$") then
-		return nil, ("invalid module name registered for PlaceId %s"):format(tostring(placeId))
+		return nil, ("invalid module name registered for UniverseId %s"):format(tostring(universeId))
 	end
 	return moduleName
 end
@@ -78,13 +111,19 @@ local function main()
 		game.Loaded:Wait()
 	end
 
+	local blocked = getBlockedExecutor()
+	if blocked then
+		log(("executor %s is not supported"):format(blocked))
+		return false
+	end
+
 	if type(loadstring) ~= "function" then
 		log("loadstring is not available in this environment")
 		return false
 	end
 
-	local placeId = game.PlaceId
-	local moduleName, routeErr = resolveModuleName(placeId)
+	local universeId = game.GameId
+	local moduleName, routeErr = resolveModuleName(universeId)
 	if not moduleName then
 		log(routeErr)
 		return false
@@ -112,7 +151,8 @@ local function main()
 
 	local ok, execErr = execute(chunk, {
 		Name = CONFIG.Name,
-		PlaceId = placeId,
+		PlaceId = game.PlaceId,
+		UniverseId = universeId,
 		ModuleName = moduleName,
 	})
 	if not ok then
