@@ -8,6 +8,7 @@ local CONFIG = {
 local GAMES = {
 	["139717576471444"] = { 10768845402 },
 	["120219252362013"] = { 10766972131 },
+	["74183246285569"] = { 10770228857 },
 }
 local function log(message)
 	warn(("[%s] %s"):format(CONFIG.Name, message))
